@@ -164,3 +164,53 @@ select
 		c.tipoproducto_id, c.cuentassalpro,f.tipopredio_id, gf."DIRECCION",gf."CELULAR",gf."TELEFONOS",gf."CORREO ELECTRONICO",gf."NOMBRE EMPRESA DONDE LABORA",d1.direccion, d2.direccion, 
 		d3.direccion, d4.direccion,gd1.pais,gd2.pais,gd3.pais,gd4.pais,gd1.provincia,gd2.provincia,gd3.provincia,gd4.provincia,gd1.distrito,gd2.distrito,gd3.distrito,gd4.distrito,
 		gd1.corregimiento,gd2.corregimiento,gd3.corregimiento,gd4.corregimiento;
+
+
+-----------------------ESTADISTICAS ENTREGA 2------------------------------------------------------
+
+------PARA BUSCAR DIR DE ENTREGA 2: Cuentas con direcciones georreferenciadas--------------
+select pebm.direccion_databanco, pebm.direccion_1,*,
+	similarity(pebm.direccion_databanco, pebm.direccion_1) as similitud
+from data_entrante.base_entrega2_mas630 pebm 
+where pebm.localizacion_1 <> '';
+
+------PARA BUSCAR DIR DE ENTREGA 2: Cuentas con direcciones verificadas y ajustadas con georreferenciacion-----------
+select pebm.direccion_databanco, pebm.direccion_1,*,
+	similarity(pebm.direccion_databanco, pebm.direccion_1) as similitud
+from data_entrante.base_entrega2_mas630 pebm 
+where pebm.localizacion_1 <> '' and similarity(pebm.direccion_databanco, pebm.direccion_1) >= 0.4 and similarity(pebm.direccion_databanco, pebm.direccion_1) < 0.9 and pebm.direccion_2 is null;
+
+------PARA BUSCAR DIR DE ENTREGA 2:Cuentas con direcciones no encontradas y cuya direccion se georreferenció-----------
+select pebm.direccion_databanco, pebm.direccion_1,*,
+	similarity(pebm.direccion_databanco, pebm.direccion_1) as similitud
+from data_entrante.base_entrega2_mas630 pebm 
+where pebm.localizacion_1 <> '' and similarity(pebm.direccion_databanco, pebm.direccion_1) > 0.9;
+
+------PARA BUSCAR DIR DE ENTREGA 2: Cuentas con direcciones no encontradas y cuya direccion no se georreferencia------------
+select pebm.direccion_databanco, pebm.direccion_1,*,
+	similarity(pebm.direccion_databanco, pebm.direccion_1) as similitud
+from data_entrante.base_entrega2_mas630 pebm 
+where pebm.localizacion_1 = '' and similarity(pebm.direccion_databanco, pebm.direccion_1) < 0.9 and direccion_2 is null;
+
+------PARA BUSCAR DIR DE ENTREGA 2: Cuentas con direccion nueva encontrada y georreferenciada------
+select pebm.direccion_databanco, pebm.direccion_1,*,
+	similarity(pebm.direccion_databanco, pebm.direccion_1) as similitud
+from data_entrante.base_entrega2_mas630 pebm 
+where pebm.localizacion_1 <> '' and similarity(pebm.direccion_databanco, pebm.direccion_1) < 0.4 and similarity(pebm.direccion_databanco, pebm.direccion_1) <= 0.9 or pebm.direccion_2 is not null;
+
+------PARA BUSCAR DIR DE ENTREGA 2: Cuentas con telefono nuevo asociado--------
+select * from data_entrante.base_entrega2_mas630 pebm 
+where pebm.telefonos_nuevos_numero <> '';
+
+------PARA BUSCAR DIR DE ENTREGA 2: Cuentas con folios asociados-------------
+select * from data_entrante.base_entrega2_mas630 pebm 
+where pebm.numero_de_finca <> '';
+
+------PARA BUSCAR DIR DE ENTREGA 2: Cuentas con lugar de trabajo nuevo----------------
+select * from data_entrante.base_entrega2_mas630 ae 
+where ae.lugar_trabajo <> '';
+
+------PARA BUSCAR DIR DE ENTREGA 1: Cuentas con correos nuevos--------------------------
+select * from data_entrante.archivo_entrega_1 ae 
+where ae.correo_electronico_nuevo <> '';
+
