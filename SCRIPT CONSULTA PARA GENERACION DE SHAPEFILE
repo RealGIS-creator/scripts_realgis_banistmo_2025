@@ -1,0 +1,38 @@
+---CONSULTA SHAPE 1ERA ENTREGA----------
+select  
+    c.cuentasnum id_de_credito,
+    c.cuentascis cis,
+    a.acreditadonum no_acreditado,
+    a.acreditadoidenti identificiacion, 
+    a.acreditadonom  nombre,
+    t.tipoestrategianom estrategia,
+    d.direccion direccion,
+    g.geodomiciliolati ||','||g.geodomiciliolongi localizaciones,
+    d.direccioneslugtra lugar_trabajo, 
+    string_agg(t2.telefononum, ' / ') telefonos_nuevos,
+    string_agg(c3.correoelec , ' / ')correo_electronico_nuevo,
+    string_agg(f.fincafolio, ' / ') numero_de_finca,    
+    f.tipocategoria_id categoria_social,
+    t3.tipopredionom tipo_de_predio,
+    t4.tipoproductonom tipo_de_producto,
+    c.cuentasdiasmoragave dias_de_mora_gaveta, 
+    c.cuentassalpro saldo_producto,
+    g.geodomiciliogeom
+    --g.geodomiciliolati latitud,
+    --g.geodomiciliolongi longitud    
+from direcciones d 
+join geodomicilio g on g.direccion_id = d.direccion_id 
+join cuentaacreditado c2 on c2.acreditado_id =d.acreditado_id 
+join cuentas c on c2.cuentas_id = c.cuentas_id 
+join data_entrante.archivo_entrega_1 ae on ae.cis = c.cuentascis
+join acreditado a on c2.acreditado_id = a.acreditado_id
+join tipoestrategia t on c.tipoestrategia_id = t.tipoestrategia_id 
+left join telefono t2 on a.acreditado_id = t2.acreditado_id 
+left join correo c3 on a.acreditado_id = c3.acreditado_id 
+left join propiedad p on a.acreditado_id = p.acreditado_id 
+left join finca f on p.finca_id = f.finca_id
+left join tipopredio t3 on f.tipopredio_id = t3.tipopredio_id 
+left join tipoproducto t4 on c.tipoproducto_id = t4.tipoproducto_id 
+where d.direccion <> '' and d.direccionest = 'A'
+group by c.cuentasnum, c.cuentascis,a.acreditadonum ,a.acreditadoidenti,a.acreditadonom ,t.tipoestrategianom,d.direccion,g.geodomiciliolati,g.geodomiciliolongi , d.direccioneslugtra ,f.tipocategoria_id, t3.tipopredionom, t4.tipoproductonom, c.cuentasdiasmoragave,
+    c.cuentassalpro, d.direccion_id, g.geodomiciliogeom ;
