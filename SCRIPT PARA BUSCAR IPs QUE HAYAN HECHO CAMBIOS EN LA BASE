@@ -1,0 +1,41 @@
+--------PARA BUSCAR IPs QUE HAYAN HECHO CAMBIOS EN LA BASE--------------
+
+DROP TABLE IF EXISTS resultados_busqueda;
+CREATE TEMP TABLE resultados_busqueda (
+    tabla TEXT,
+    columna TEXT,
+    valor TEXT
+);
+
+-- Luego ejecuta este DO con inserción
+DO $$
+DECLARE
+    r RECORD;
+    sql TEXT;
+BEGIN
+    FOR r IN
+        SELECT table_schema, table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'  -- <-- reemplaza por tu esquema
+          AND data_type IN ('character varying', 'text', 'char')
+    LOOP
+        sql := format($f$
+            INSERT INTO resultados_busqueda (tabla, columna, valor)
+            SELECT '%I.%I', '%I', %I
+            FROM %I.%I
+            WHERE %I ILIKE '%%10.0.12.69%%'
+            LIMIT 5;
+        $f$,
+            r.table_schema, r.table_name, r.column_name,
+            r.column_name,
+            r.table_schema, r.table_name,
+            r.column_name
+        );
+        EXECUTE sql;
+    END LOOP;
+END $$;
+
+-- Finalmente, consulta la tabla
+SELECT * FROM resultados_busqueda;
+
+--------------------------------------------------------------------------------------------
