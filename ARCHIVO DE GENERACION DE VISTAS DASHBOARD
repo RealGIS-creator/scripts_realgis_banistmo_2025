@@ -1,0 +1,87 @@
+create or replace view direcciones_nuevasyverificadas  as 
+select pebm.*,
+    similarity(pebm.direccion_databanco, pebm.direcciones) as similitud, 
+    case when similarity(pebm.direccion_databanco, pebm.direcciones) >= 0.4 and similarity(pebm.direccion_databanco, pebm.direcciones) < 0.9 then 'Verificados' else 'Nuevos' end as estado
+from data_entrante.archivo_entrega_1 pebm 
+where pebm.localizaciones <> '';
+
+
+create or replace view telefonos_nuevosyverificados  as 
+select *, case when telefonos_nuevos <> '' then 'Nuevos' else 'Verificados' end as estado
+from data_entrante.archivo_entrega_1 pebm;
+
+
+create or replace view lugaresdetabajo_nuevos as 
+select *, case when ae.lugar_trabajo <> '' then 'Nuevo' end as estado
+from data_entrante.archivo_entrega_1 ae;
+
+
+
+create or replace view correos_nuevos as 
+select *, case when ae.correo_electronico_nuevo <> '' then 'Nuevos' end as estado
+from data_entrante.archivo_entrega_1 ae;
+
+
+
+create or replace view cuentas_finca_asociada as 
+select *, case when numero_de_finca <> '' then 'Nuevos' end as estado
+from data_entrante.archivo_entrega_1 pebm;
+
+
+create or replace view cuentas_georreferenciadas as 
+select *, case when cuentasgeoref is true then 'Georreferenciadas' end as estado
+from cuentas c ;
+
+
+---------------------------------------------------------------------------------------------------------------------
+
+
+create index on geodomicilio using GIST (geodomiciliogeom);
+create index on capas.corregimientos using GIST (geom);
+create index on capas.distritos_pma_mbn using GIST (geom);
+
+
+CREATE OR REPLACE VIEW public.entrega1xcorregimientos
+as (
+	select g.direccion_id,c.lmco_nomb from geodomicilio g 
+	join direcciones d on d.direccion_id = g.direccion_id 
+	join cuentaacreditado c2 on c2.acreditado_id =d.acreditado_id 
+	join cuentas c3 on c3.cuentas_id = c2.cuentas_id 
+	join capas.corregimientos c on st_intersects(c.geom ,g.geodomiciliogeom)
+	where c3.cuentasentrega = 'ENTREGA 1');
+
+CREATE OR REPLACE VIEW public.entrega1xdistritos
+as (
+	select g.direccion_id, di."LMDI_NOMB" from geodomicilio g 
+	join direcciones d on d.direccion_id = g.direccion_id 
+	join cuentaacreditado c2 on c2.acreditado_id =d.acreditado_id 
+	join cuentas c3 on c3.cuentas_id = c2.cuentas_id 
+	join capas.distritos_pma_mbn di on st_intersects(di.geom ,g.geodomiciliogeom)
+	where c3.cuentasentrega = 'ENTREGA 1');
+
+
+CREATE OR REPLACE VIEW public.entrega1xbuffersucursales
+as (
+	select g.direccion_id, b.nombre from geodomicilio g 
+	join direcciones d on d.direccion_id = g.direccion_id 
+	join cuentaacreditado c2 on c2.acreditado_id =d.acreditado_id 
+	join cuentas c3 on c3.cuentas_id = c2.cuentas_id 
+	join capas.buffersucursales b on st_intersects(b.geom ,g.geodomiciliogeom)
+	where c3.cuentasentrega = 'ENTREGA 1');
+
+CREATE OR REPLACE VIEW public.cisxsucursal
+as (
+	select c2.cuentascis, c2.cuentasnum, g.direccion_id, s.id, s.nombre, st_distance(g.geodomiciliogeom,s.geom) as distancia, g.geodomiciliolati as latitud_cliente, g.geodomiciliolongi as longitud_cliente, s.lat as latitud_sucursal, s.lon as longitud_sucursal from geodomicilio g
+	join direcciones d on d.direccion_id =g.direccion_id 
+	join cuentaacreditado c on c.acreditado_id =d.acreditado_id 
+	join cuentas c2 on c2.cuentas_id = c.cuentas_id 
+	join lateral (
+		select s.id,s.geom,s.nombre, s.lat, s.lon from capas.sucursales s 
+		order by g.geodomiciliogeom <-> s.geom
+		limit 1)
+	s on true);
+
+
+CREATE OR REPLACE VIEW public.sucursales
+as (
+	select s.id, s.nombre, s.lat, s.lon from capas.sucursales s);
