@@ -13,6 +13,15 @@ direcciones_numeradas as (
 	left join primer_cis_por_acreditado pc on pc.acreditado_id = d.acreditado_id
 	left join data_entrante.georreferenciacion_feb gf on gf."CIS" = pc.cuentascis
 	where d.tipodireccion_id in (1,2) and d.direccionest ='A' and d.direccion is not null and trim(d.direccion)<>'' and upper(trim(d.direccion)) <> upper(trim(gf."DIRECCION"))
+),
+telefonos_nuevos_numerados as (
+  select 
+    t.acreditado_id,
+    t.telefonopre,
+    t.telefononum,
+    row_number() over (partition by t.acreditado_id order by t.telefono_id) as tel_num
+  from public.telefono t
+  where t.tipotelefono_id = 4
 )
 select 
 		c.cuentasnum ID_DE_CREDITO,
@@ -103,11 +112,15 @@ select
         --string_agg(distinct case when d.tipodireccion_id = 1 and direccion is not null and direccionest = 'A' then concat(gd.geodomiciliolati, ',', gd.geodomiciliolongi) else null end, ' / ') AS LOCALIZACION_RESIDENCIAL,
 		gf."CELULAR" CELULAR_DATABANCO,
 		gf."TELEFONOS" TELEFONOS_DATABANCO,
-		string_agg(distinct case when t.tipotelefono_id = 4 then t.telefonopre::TEXT else null end, ' / ')
+		tn1.telefonopre as TELEFONOS_NUEVOS_PREFIJO_1,
+		tn1.telefononum as TELEFONOS_NUEVOS_NUMERO_1,
+		tn2.telefonopre as TELEFONOS_NUEVOS_PREFIJO_2,
+		tn2.telefononum as TELEFONOS_NUEVOS_NUMERO_2,
+		/*string_agg(distinct case when t.tipotelefono_id = 4 then t.telefonopre::TEXT else null end, ' / ')
 		as TELEFONOS_NUEVOS_PREFIJO,
 		string_agg(distinct case when t.tipotelefono_id = 4 then t.telefononum else null end, ' / ')
 		as TELEFONOS_NUEVOS_NUMERO,
-        /*string_agg(distinct case when t.tipotelefono_id = 1 then concat('+','(',t.telefonopre,')',t.telefononum) else null end, ' / ')
+        string_agg(distinct case when t.tipotelefono_id = 1 then concat('+','(',t.telefonopre,')',t.telefononum) else null end, ' / ')
 		as CELULAR,
 		string_agg(distinct case when t.tipotelefono_id = 2 then concat('+','(',t.telefonopre,')',t.telefononum) else null end, ' / ')
 		as TELEFONO_RESIDENCIAL,
@@ -138,7 +151,8 @@ select
 			when c.tipoproducto_id = 6 then 'TARJETA DEBITO'
 		end TIPO_DE_PRODUCTO,
 		c.cuentasdiasmoragave DIAS_DE_MORA_GAVETA,
-		c.cuentassalpro SALDO_PRODUCTO 
+		c.cuentassalpro SALDO_PRODUCTO,
+		'GEORREFERENCIABLE' georreferenciable
 		from public.cuentas c
 		join public.cuentaacreditado ca on ca.cuentas_id = c.cuentas_id
 		join public.acreditado a  on a.acreditado_id = ca.acreditado_id
@@ -158,12 +172,14 @@ select
 		left join public.geodomicilio1 gd2 on gd2.direccion_id = d2.direccion_id
 		left join public.geodomicilio1 gd3 on gd3.direccion_id = d3.direccion_id
 		left join public.geodomicilio1 gd4 on gd4.direccion_id = d4.direccion_id
-		where c.cuentasgeoref is true and c.cuentasentrega is null or c.cuentasentrega = 'AGREGAR ENTREGA 2'
+		left join telefonos_nuevos_numerados tn1 on tn1.acreditado_id = a.acreditado_id and tn1.tel_num = 1
+		left join telefonos_nuevos_numerados tn2 on tn2.acreditado_id = a.acreditado_id and tn2.tel_num = 2
+		where c.cuentasgeoref is true and c.cuentasentrega = 'AGREGAR ENTREGA 1'
 		group by c.cuentasnum, c.cuentascis, a.acreditadonum, a.acreditadoidenti,a.acreditado_id,gd1.geodomiciliolati,gd1.geodomiciliolongi,gd2.geodomiciliolati,gd2.geodomiciliolongi,
 		gd3.geodomiciliolati,gd3.geodomiciliolongi,gd4.geodomiciliolati,gd4.geodomiciliolongi,/*d.direccion_id,*/ a.acreditadonom,c.cuentasgeoref, c.tipoestrategia_id, c.cuentasdiasmoragave, 
 		c.tipoproducto_id, c.cuentassalpro,f.tipopredio_id, gf."DIRECCION",gf."CELULAR",gf."TELEFONOS",gf."CORREO ELECTRONICO",gf."NOMBRE EMPRESA DONDE LABORA",d1.direccion, d2.direccion, 
 		d3.direccion, d4.direccion,gd1.pais,gd2.pais,gd3.pais,gd4.pais,gd1.provincia,gd2.provincia,gd3.provincia,gd4.provincia,gd1.distrito,gd2.distrito,gd3.distrito,gd4.distrito,
-		gd1.corregimiento,gd2.corregimiento,gd3.corregimiento,gd4.corregimiento;
+		gd1.corregimiento,gd2.corregimiento,gd3.corregimiento,gd4.corregimiento,tn1.telefonopre,tn1.telefononum,tn2.telefonopre,tn2.telefononum;
 
 
 -----------------------ESTADISTICAS ENTREGA 2------------------------------------------------------
