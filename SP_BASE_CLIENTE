@@ -1,0 +1,253 @@
+
+-----PRUEBA CAMBIO SP BASE CLIENTE-----------------------------
+CREATE OR REPLACE PROCEDURE public.sp_prueba_1(IN p_direccion_ids text[] DEFAULT NULL::text[])
+ LANGUAGE plpgsql
+AS $procedure$
+DECLARE
+    v_direccion_ids INTEGER[];
+BEGIN
+    DELETE FROM temporalbasecliente;
+
+     IF p_direccion_ids IS NOT NULL THEN
+        v_direccion_ids := ARRAY(SELECT unnest(p_direccion_ids)::integer);
+    END IF;
+
+    INSERT INTO temporalbasecliente(
+	  	ID_DE_CREDITO,
+	  	CHECK_GEORREF,
+	  	CIS,
+	  	acreditado_id,
+	  	NO_ACREDITADO,
+	  	IDENTIFICACION,
+	  	NOMBRE,
+	  	ESTRATEGIA,
+	  	DIRECCION_DATABANCO,
+	  	PAIS_1,
+	  	PROVINCIA_1,
+	  	DISTRITO_1,
+	  	CORREGIMIENTO_1,
+	  	DIRECCION_1,
+	  	LOCALIZACION_1,
+	  	PAIS_2,
+	  	PROVINCIA_2,
+	  	DISTRITO_2,
+	  	CORREGIMIENTO_2,
+	  	DIRECCION_2,
+	  	LOCALIZACION_2,
+	  	PAIS_3,
+	  	PROVINCIA_3,
+	  	DISTRITO_3,
+	  	CORREGIMIENTO_3,
+	  	DIRECCION_3,
+	  	LOCALIZACION_3,
+	  	PAIS_4,
+	  	PROVINCIA_4,
+	  	DISTRITO_4,
+	  	CORREGIMIENTO_4,
+	  	DIRECCION_4,
+	  	LOCALIZACION_4,
+	  	NOMBRE_EMPRESA_LABORA_DATABANCO,
+	  	LUGAR_TRABAJO,
+	  	CELULAR_DATABANCO,
+	  	TELEFONOS_DATABANCO,
+	  	TELEFONOS_NUEVOS_PREFIJO_1,
+	  	TELEFONOS_NUEVOS_NUMERO_1,
+	  	TELEFONOS_NUEVOS_PREFIJO_2,
+	  	TELEFONOS_NUEVOS_NUMERO_2,
+	  	CORREO_DATABANCO,
+	  	CORREO_ELECTRONICO_NUEVO,
+	  	NUMERO_DE_FINCA,
+	  	CATEGORIA_SOCIAL,
+	  	TIPO_DE_PREDIO,
+	  	TIPO_DE_PRODUCTO,
+	  	DIAS_DE_MORA_GAVETA,
+	  	SALDO_PRODUCTO,
+	  	georreferenciable)
+	    WITH primer_cis_por_acreditado AS (
+	      SELECT ca2.acreditado_id, c2.cuentascis
+	      FROM public.cuentaacreditado ca2 
+	      JOIN public.cuentas c2 ON c2.cuentas_id = ca2.cuentas_id 
+	      GROUP BY ca2.acreditado_id, c2.cuentascis
+	    ),
+	    direcciones_numeradas AS (
+	        SELECT d.acreditado_id, d.direccion_id, d.direccion,
+	        row_number() OVER (PARTITION BY d.acreditado_id ORDER BY d.direccion_id) AS dir_num
+	        FROM public.direcciones d 
+	        LEFT JOIN primer_cis_por_acreditado pc ON pc.acreditado_id = d.acreditado_id
+	        LEFT JOIN data_entrante.georreferenciacion_feb gf ON gf."CIS" = pc.cuentascis
+	        WHERE d.tipodireccion_id IN (1,2) AND d.direccionest ='A' AND d.direccion IS NOT NULL AND TRIM(d.direccion)<>'' AND UPPER(TRIM(d.direccion)) <> UPPER(TRIM(gf."DIRECCION"))
+	    ),
+	    telefonos_nuevos_numerados AS (
+	      SELECT 
+	        t.acreditado_id,
+	        t.telefonopre,
+	        t.telefononum,
+	        row_number() OVER (PARTITION BY t.acreditado_id ORDER BY t.telefono_id) AS tel_num
+	      FROM public.telefono t
+	      WHERE t.tipotelefono_id = 4
+	    )
+	    SELECT 
+			c.cuentasnum ID_DE_CREDITO,
+			c.cuentasgeoref CHECK_GEORREF,
+			c.cuentascis CIS,
+			a.acreditado_id acreditado_id,
+			/*d.direccion_id direccion_id,*/
+			a.acreditadonum NO_ACREDITADO,
+			a.acreditadoidenti IDENTIFICACION,
+			a.acreditadonom NOMBRE,
+			case 
+				when c.tipoestrategia_id = 1 then 'DESCUENTO DIRECTO'
+				when c.tipoestrategia_id = 2 then 'ENTREGA TDC'
+				when c.tipoestrategia_id = 3 then 'ENTREGA TDD'
+				when c.tipoestrategia_id = 4 then 'TOKENIZACION'
+			end ESTRATEGIA,
+			gf."DIRECCION" DIRECCION_DATABANCO,
+			/*string_agg(distinct case when d.tipodireccion_id =2 then direccion else null end, ' / ')
+			as DIRECCION_LABORAL,*/
+			case
+			  when gd1.geodomipais is not null then gd1.geodomipais else null
+			end as PAIS_1,
+			case
+			  when gd1.geodomipro is not null then gd1.geodomipro else null
+			end as PROVINCIA_1,
+			case
+			  when gd1.geodomidis is not null then gd1.geodomidis else null
+			end as DISTRITO_1,
+			case
+			  when gd1.geodomicor is not null then gd1.geodomicor else null
+			end as CORREGIMIENTO_1,		
+			upper(d1.direccion) as DIRECCION_1,
+			case
+			  when gd1.geodomiciliolati is not null and gd1.geodomiciliolongi is not null then gd1.geodomiciliolati || ',' || gd1.geodomiciliolongi else null
+			end as LOCALIZACION_1,
+			case
+			  when gd2.geodomipais is not null then gd2.geodomipais else null
+			end as PAIS_2,
+			case
+			  when gd2.geodomipro is not null then gd2.geodomipro else null
+			end as PROVINCIA_2,
+			case
+			  when gd2.geodomidis is not null then gd2.geodomidis else null
+			end as DISTRITO_2,
+			case
+			  when gd2.geodomicor is not null then gd2.geodomicor else null
+			end as CORREGIMIENTO_2,			
+			upper(d2.direccion) as DIRECCION_2, 
+			case
+			  when gd2.geodomiciliolati is not null and gd2.geodomiciliolongi is not null then gd2.geodomiciliolati || ',' || gd2.geodomiciliolongi else null
+			end as LOCALIZACION_2,
+			case
+			  when gd3.geodomipais is not null then gd3.geodomipais else null
+			end as PAIS_3,
+			case
+			  when gd3.geodomipro is not null then gd3.geodomipro else null
+			end as PROVINCIA_3,
+			case
+			  when gd3.geodomidis is not null then gd3.geodomidis else null
+			end as DISTRITO_3,
+			case
+			  when gd3.geodomicor is not null then gd3.geodomicor else null
+			end as CORREGIMIENTO_3,	
+			upper(d3.direccion) as DIRECCION_3,
+			case
+			  when gd3.geodomiciliolati is not null and gd3.geodomiciliolongi is not null then gd3.geodomiciliolati || ',' || gd3.geodomiciliolongi else null
+			end as LOCALIZACION_3,
+			case
+			  when gd4.geodomipais is not null then gd4.geodomipais else null
+			end as PAIS_4,
+			case
+			  when gd4.geodomipro is not null then gd4.geodomipro else null
+			end as PROVINCIA_4,
+			case
+			  when gd4.geodomidis is not null then gd4.geodomidis else null
+			end as DISTRITO_4,		
+			case
+			  when gd4.geodomicor is not null then gd4.geodomicor else null
+			end as CORREGIMIENTO_4,			
+			upper(d4.direccion) as DIRECCION_4,
+			case
+			  when gd4.geodomiciliolati is not null and gd4.geodomiciliolongi is not null then gd4.geodomiciliolati || ',' || gd4.geodomiciliolongi else null
+			end as LOCALIZACION_4,
+			/*string_agg(distinct case when d.tipodireccion_id in (1,2) and d.direccion <> '' and d.direccionest = 'A' and upper(trim(d.direccion)) <> upper(trim(gf."DIRECCION")) then concat(gd.geodomiciliolati, ',', gd.geodomiciliolongi) else null end, ' / ') AS LOCALIZACIONES,*/
+			gf."NOMBRE EMPRESA DONDE LABORA" NOMBRE_EMPRESA_LABORA_DATABANCO,
+			string_agg(distinct case when d.tipodireccion_id =2 and upper(trim(direccioneslugtra)) <> upper(trim(gf."NOMBRE EMPRESA DONDE LABORA")) and direccioneslugtra <> '' then direccioneslugtra else null end, ' / ')
+			as LUGAR_TRABAJO,
+	        --string_agg(distinct case when d.tipodireccion_id = 1 and direccion is not null and direccionest = 'A' then concat(gd.geodomiciliolati, ',', gd.geodomiciliolongi) else null end, ' / ') AS LOCALIZACION_RESIDENCIAL,
+			gf."CELULAR" CELULAR_DATABANCO,
+			gf."TELEFONOS" TELEFONOS_DATABANCO,
+			tn1.telefonopre as TELEFONOS_NUEVOS_PREFIJO_1,
+			tn1.telefononum as TELEFONOS_NUEVOS_NUMERO_1,
+			tn2.telefonopre as TELEFONOS_NUEVOS_PREFIJO_2,
+			tn2.telefononum as TELEFONOS_NUEVOS_NUMERO_2,
+			/*string_agg(distinct case when t.tipotelefono_id = 4 then t.telefonopre::TEXT else null end, ' / ')
+			as TELEFONOS_NUEVOS_PREFIJO,
+			string_agg(distinct case when t.tipotelefono_id = 4 then t.telefononum else null end, ' / ')
+			as TELEFONOS_NUEVOS_NUMERO,
+	        string_agg(distinct case when t.tipotelefono_id = 1 then concat('+','(',t.telefonopre,')',t.telefononum) else null end, ' / ')
+			as CELULAR,
+			string_agg(distinct case when t.tipotelefono_id = 2 then concat('+','(',t.telefonopre,')',t.telefononum) else null end, ' / ')
+			as TELEFONO_RESIDENCIAL,
+			string_agg(distinct case when t.tipotelefono_id = 3 then concat('+','(',t.telefonopre,')',t.telefononum) else null end, ' / ')
+			as TELEFONO_FIJO,
+			string_agg(distinct case when t.tipotelefono_id = 5 then concat('+','(',t.telefonopre,')',t.telefononum) else null end, ' / ')
+			as TELEFONO_ADICIONAL,*/
+			gf."CORREO ELECTRONICO" CORREO_DATABANCO,
+			/*string_agg(distinct case when co.tipocorreo_id = 1 then co.correoelec else null end, ' / ')
+			as CORREO_ELECTRONICO_PERSONAL,*/
+			string_agg(distinct case when co.tipocorreo_id = 2 and trim(co.correoelec) <> trim(gf."CORREO ELECTRONICO") then co.correoelec else null end, ' / ')
+			as CORREO_ELECTRONICO_NUEVO,
+			string_agg(distinct concat(f.fincafolio), ' / ')
+			as NUMERO_DE_FINCA,
+			string_agg(distinct concat(f.fincacategoriasocial), ' / ')
+			as CATEGORIA_SOCIAL,
+			case
+				when f.tipopredio_id = 1 then 'RESIDENCIAL'
+				when f.tipopredio_id = 2 then 'COMERCIAL'
+				when f.tipopredio_id = 3 then 'INDUSTRIAL'
+			end TIPO_DE_PREDIO,
+			case 
+				when c.tipoproducto_id = 1 then 'FINANCOMER'
+				when c.tipoproducto_id = 2 then 'PRESTAMO HIPOTECARIO'
+				when c.tipoproducto_id = 3 then 'PRESTAMO PERSONAL'
+				when c.tipoproducto_id = 4 then 'TARJETA DE CREDITO'
+				when c.tipoproducto_id = 5 then 'PRESTAMO AUTO'
+				when c.tipoproducto_id = 6 then 'TARJETA DEBITO'
+			end TIPO_DE_PRODUCTO,
+			c.cuentasdiasmoragave DIAS_DE_MORA_GAVETA,
+			c.cuentassalpro SALDO_PRODUCTO,
+			'GEORREFERENCIABLE' georreferenciable
+			from public.cuentas c
+			join public.cuentaacreditado ca on ca.cuentas_id = c.cuentas_id
+			join public.acreditado a  on a.acreditado_id = ca.acreditado_id
+			left join public.direcciones d on d.acreditado_id = a.acreditado_id
+			left join public.telefono t on t.acreditado_id = a.acreditado_id
+			left join public.geodomicilio gd on gd.direccion_id = d.direccion_id
+			left join public.correo co on co.acreditado_id = a.acreditado_id
+			left join public.propiedad p on p.acreditado_id = a.acreditado_id
+			left join public.finca f on f.finca_id = p.finca_id
+			left join data_entrante.georreferenciacion_feb gf on gf."CIS" = c.cuentascis
+			left join public.metadireccion m on m.direccion_id = d.direccion_id
+			left join direcciones_numeradas d1 on d1.acreditado_id = a.acreditado_id and d1.dir_num =1
+			left join direcciones_numeradas d2 on d2.acreditado_id = a.acreditado_id and d2.dir_num =2
+			left join direcciones_numeradas d3 on d3.acreditado_id = a.acreditado_id and d3.dir_num =3
+			left join direcciones_numeradas d4 on d4.acreditado_id = a.acreditado_id and d4.dir_num =4
+			left join public.geodomicilio gd1 on gd1.direccion_id = d1.direccion_id
+			left join public.geodomicilio gd2 on gd2.direccion_id = d2.direccion_id
+			left join public.geodomicilio gd3 on gd3.direccion_id = d3.direccion_id
+			left join public.geodomicilio gd4 on gd4.direccion_id = d4.direccion_id
+			left join telefonos_nuevos_numerados tn1 on tn1.acreditado_id = a.acreditado_id and tn1.tel_num = 1
+			left join telefonos_nuevos_numerados tn2 on tn2.acreditado_id = a.acreditado_id and tn2.tel_num = 2
+	    	WHERE (c.cuentasest = 'A' AND ca.cuentaacreditadoest = 'A' AND a.acreditadosest = 'A' AND d.direccionest = 'A' AND gd.geodomicilioest = 'A') AND (p_direccion_ids IS NULL OR d.direccion_id = ANY(v_direccion_ids))
+		   -- AND (t.telefonoest IS NULL OR t.telefonoest = 'A')
+		    --AND (co.correoest IS NULL OR co.correoest = 'A')
+		    --AND (p.propiedadest IS NULL OR p.propiedadest = 'A')
+		    --AND (f.fincaest IS NULL OR f.fincaest = 'A')
+			group by c.cuentasnum, c.cuentascis, a.acreditadonum, a.acreditadoidenti,a.acreditado_id,gd1.geodomiciliolati,gd1.geodomiciliolongi,gd2.geodomiciliolati,gd2.geodomiciliolongi,
+			gd3.geodomiciliolati,gd3.geodomiciliolongi,gd4.geodomiciliolati,gd4.geodomiciliolongi,/*d.direccion_id,*/ a.acreditadonom,c.cuentasgeoref, c.tipoestrategia_id, c.cuentasdiasmoragave, 
+			c.tipoproducto_id, c.cuentassalpro,f.tipopredio_id, gf."DIRECCION",gf."CELULAR",gf."TELEFONOS",gf."CORREO ELECTRONICO",gf."NOMBRE EMPRESA DONDE LABORA",d1.direccion, d2.direccion, 
+			d3.direccion, d4.direccion,gd1.geodomipais,gd2.geodomipais,gd3.geodomipais,gd4.geodomipais,gd1.geodomipro,gd2.geodomipro,gd3.geodomipro,gd4.geodomipro,gd1.geodomidis,gd2.geodomidis,gd3.geodomidis,gd4.geodomidis,
+			gd1.geodomicor,gd2.geodomicor,gd3.geodomicor,gd4.geodomicor,tn1.telefonopre,tn1.telefononum,tn2.telefonopre,tn2.telefononum
+    ;
+END;
+$procedure$
+;
