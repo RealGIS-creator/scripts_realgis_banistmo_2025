@@ -1,0 +1,26 @@
+------ACTUALIZAR INTERSECTS CAPAS EN GEODOMICILIO--------------------
+update geodomicilio g set geodomicor = c.lmco_nomb
+from capas.corregimientos c
+where ST_Intersects(c.geom,g.geodomiciliogeom) and (g.geodomicor is null or g.geodomicor ='');
+
+update geodomicilio g set geodomidis = c."LMDI_NOMB"
+from capas.distritos_pma_mbn c
+where ST_Intersects(c.geom,g.geodomiciliogeom) and (g.geodomidis is null or g.geodomidis ='');
+
+update geodomicilio g set geodomipro = c.name_1 
+from capas.gadm41_pan_3 c
+where ST_Intersects(c.geom,g.geodomiciliogeom) and (g.geodomipro is null or g.geodomipro ='');
+
+update geodomicilio g set geodomipais = c.country 
+from capas.gadm41_pan_3 c
+where ST_Intersects(c.geom,g.geodomiciliogeom) and (g.geodomipais is null or g.geodomipais ='');
+
+select * from geodomicilio g where upper(g.geodomicor) ilike '%CORREGIMIENTO %';
+
+update geodomicilio 
+set geodomidis = substring(geodomidis from position('Distrito de' in geodomidis)+12)
+where upper(geodomidis) ilike 'DISTRITO DE%';
+
+update geodomicilio 
+set geodomicor = substring(geodomicor from position('Corregimiento ' in geodomicor)+13)
+where upper(geodomicor) ilike 'CORREGIMIENTO %';
