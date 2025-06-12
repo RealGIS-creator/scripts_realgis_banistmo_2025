@@ -1,4 +1,3 @@
-
 -----PRUEBA CAMBIO SP BASE CLIENTE-----------------------------
 CREATE OR REPLACE PROCEDURE public.sp_prueba_1(IN p_direccion_ids text[] DEFAULT NULL::text[])
  LANGUAGE plpgsql
@@ -14,9 +13,9 @@ BEGIN
 
     INSERT INTO temporalbasecliente(
 	  	ID_DE_CREDITO,
-	  	CHECK_GEORREF,
+	  	--CHECK_GEORREF,
 	  	CIS,
-	  	acreditado_id,
+	  	--acreditado_id,
 	  	NO_ACREDITADO,
 	  	IDENTIFICACION,
 	  	NOMBRE,
@@ -62,7 +61,7 @@ BEGIN
 	  	TIPO_DE_PRODUCTO,
 	  	DIAS_DE_MORA_GAVETA,
 	  	SALDO_PRODUCTO,
-	  	georreferenciable)
+	  	GEORREFERENCIABLE)
 	    WITH primer_cis_por_acreditado AS (
 	      SELECT ca2.acreditado_id, c2.cuentascis
 	      FROM public.cuentaacreditado ca2 
@@ -88,9 +87,9 @@ BEGIN
 	    )
 	    SELECT 
 			c.cuentasnum ID_DE_CREDITO,
-			c.cuentasgeoref CHECK_GEORREF,
+			--c.cuentasgeoref CHECK_GEORREF,
 			c.cuentascis CIS,
-			a.acreditado_id acreditado_id,
+			--a.acreditado_id acreditado_id,
 			/*d.direccion_id direccion_id,*/
 			a.acreditadonum NO_ACREDITADO,
 			a.acreditadoidenti IDENTIFICACION,
@@ -242,12 +241,14 @@ BEGIN
 		    --AND (co.correoest IS NULL OR co.correoest = 'A')
 		    --AND (p.propiedadest IS NULL OR p.propiedadest = 'A')
 		    --AND (f.fincaest IS NULL OR f.fincaest = 'A')
-			group by c.cuentasnum, c.cuentascis, a.acreditadonum, a.acreditadoidenti,a.acreditado_id,gd1.geodomiciliolati,gd1.geodomiciliolongi,gd2.geodomiciliolati,gd2.geodomiciliolongi,
-			gd3.geodomiciliolati,gd3.geodomiciliolongi,gd4.geodomiciliolati,gd4.geodomiciliolongi,/*d.direccion_id,*/ a.acreditadonom,c.cuentasgeoref, c.tipoestrategia_id, c.cuentasdiasmoragave, 
+			group by c.cuentasnum, c.cuentascis, a.acreditadonum, a.acreditadoidenti,/*a.acreditado_*/id,gd1.geodomiciliolati,gd1.geodomiciliolongi,gd2.geodomiciliolati,gd2.geodomiciliolongi,
+			gd3.geodomiciliolati,gd3.geodomiciliolongi,gd4.geodomiciliolati,gd4.geodomiciliolongi,/*d.direccion_id,*/ a.acreditadonom,/*c.cuentasgeoref,*/ c.tipoestrategia_id, c.cuentasdiasmoragave, 
 			c.tipoproducto_id, c.cuentassalpro,f.tipopredio_id, gf."DIRECCION",gf."CELULAR",gf."TELEFONOS",gf."CORREO ELECTRONICO",gf."NOMBRE EMPRESA DONDE LABORA",d1.direccion, d2.direccion, 
 			d3.direccion, d4.direccion,gd1.geodomipais,gd2.geodomipais,gd3.geodomipais,gd4.geodomipais,gd1.geodomipro,gd2.geodomipro,gd3.geodomipro,gd4.geodomipro,gd1.geodomidis,gd2.geodomidis,gd3.geodomidis,gd4.geodomidis,
 			gd1.geodomicor,gd2.geodomicor,gd3.geodomicor,gd4.geodomicor,tn1.telefonopre,tn1.telefononum,tn2.telefonopre,tn2.telefononum
     ;
 END;
+$procedure$
+;
 $procedure$
 ;
