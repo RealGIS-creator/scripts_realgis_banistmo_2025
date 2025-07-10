@@ -1,0 +1,83 @@
+select 
+		c.cuentasnum ID_DE_CREDITO,
+		c.cuentascis CIS,
+		a.acreditado_id acreditado_id,
+		case when d.direccionest ='A' and d.direccion <> '' and upper(trim(direccion)) <> upper(trim(gf."DIRECCION")) then d.direccion_id end direccion_id,
+		a.acreditadonum NO_ACREDITADO,
+		a.acreditadoidenti IDENTIFICACION,
+		a.acreditadonom NOMBRE,
+		case 
+			when c.tipoestrategia_id = 1 then 'DESCUENTO DIRECTO'
+			when c.tipoestrategia_id = 2 then 'ENTREGA TDC'
+			when c.tipoestrategia_id = 3 then 'ENTREGA TDD'
+			when c.tipoestrategia_id = 4 then 'TOKENIZACION'
+		end ESTRATEGIA,
+		gf."DIRECCION" DIRECCION_DATABANCO,
+		case when gd.geodomipais is not null and d.direccionest ='A' and d.direccion <> '' and upper(trim(direccion)) <> upper(trim(gf."DIRECCION")) then gd.geodomipais
+		end as PAIS,
+		case when gd.geodomidis is not null and d.direccionest ='A' and d.direccion <> '' and upper(trim(direccion)) <> upper(trim(gf."DIRECCION")) then gd.geodomidis
+		end as DISTRITO,
+		case when gd.geodomipro is not null and d.direccionest ='A' and d.direccion <> '' and upper(trim(direccion)) <> upper(trim(gf."DIRECCION")) then gd.geodomipro
+		end as PROVINCIA,
+		case when gd.geodomicor is not null and d.direccionest ='A' and d.direccion <> '' and upper(trim(direccion)) <> upper(trim(gf."DIRECCION")) then gd.geodomicor 
+		end as CORREGIMIENTO,
+		case when d.tipodireccion_id in (1,2) and direccionest = 'A' and direccion <> '' and gf."DIRECCION" is not null and upper(trim(direccion)) <> upper(trim(gf."DIRECCION")) then direccion /*else null*/ end
+		as DIRECCIONES,
+		case when d.tipodireccion_id in (1,2) and direccionest = 'A' and direccion <> '' and gf."DIRECCION" is not null and upper(trim(direccion)) <> upper(trim(gf."DIRECCION")) then direccion_1 /*else null*/ end
+		as DIRECCION,
+		case when d.tipodireccion_id in (1,2) and direccion <> '' and direccionest = 'A' and upper(trim(direccion)) <> upper(trim(gf."DIRECCION")) then concat(gd.geodomiciliolati, ',', gd.geodomiciliolongi) end
+		AS LOCALIZACIONES,
+		gf."NOMBRE EMPRESA DONDE LABORA" NOMBRE_EMPRESA_LABORA_DATABANCO,
+		string_agg(distinct case when d.tipodireccion_id =2 and d.direccioneslugtra <>'' and upper(trim(direccioneslugtra)) <> upper(trim(gf."NOMBRE EMPRESA DONDE LABORA")) then direccioneslugtra else null end, ' | ')
+		as LUGAR_TRABAJO,
+		gf."CELULAR" CELULAR_DATABANCO,
+		gf."TELEFONOS" TELEFONOS_DATABANCO,
+		string_agg(distinct case when t.tipotelefono_id = 4 then concat('+','(',t.telefonopre,')',t.telefononum) else null end, ' | ')
+		as TELEFONOS_NUEVOS,
+		gf."CORREO ELECTRONICO" CORREO_DATABANCO,
+		string_agg(distinct case when co.tipocorreo_id = 2 and trim(co.correoelec) <> trim(gf."CORREO ELECTRONICO") then co.correoelec else null end, ' | ')
+		as CORREO_ELECTRONICO_NUEVO,
+		string_agg(distinct concat(f.fincafolio), ' | ')
+		as NUMERO_DE_FINCA,
+		string_agg(distinct concat(f.fincacategoriasocial), ' | ')
+		as CATEGORIA_SOCIAL,
+		case
+			when f.tipopredio_id = 1 then 'RESIDENCIAL'
+			when f.tipopredio_id = 2 then 'COMERCIAL'
+			when f.tipopredio_id = 3 then 'INDUSTRIAL'
+		end TIPO_DE_PREDIO,
+		case 
+			when c.tipoproducto_id = 1 then 'FINANCOMER'
+			when c.tipoproducto_id = 2 then 'PRESTAMO HIPOTECARIO'
+			when c.tipoproducto_id = 3 then 'PRESTAMO PERSONAL'
+			when c.tipoproducto_id = 4 then 'TARJETA DE CREDITO'
+			when c.tipoproducto_id = 5 then 'PRESTAMO AUTO'
+			when c.tipoproducto_id = 6 then 'TARJETA DEBITO'
+		end TIPO_DE_PRODUCTO,
+		c.cuentasdiasmoragave DIAS_DE_MORA_GAVETA,
+		c.cuentassalpro SALDO_PRODUCTO,
+		c.cuentasentrega ENTREGA,
+		null FLAG_NUEVA_DIR,
+		null FLAG_DIR_VALIDADA,
+		NULL FLAG_NUEVO_TEL,
+		NULL FLAG_TEL_VALIDADA,
+		NULL FLAG_NUEVO_EMAIL,
+		NULL FLAG_EMAIL_VALIDADO,
+		'GEORREFERENCIABLE' GEORREFERENCIABLE,
+		d.ranking PROBAILIDAD_CONTACTO_DIR
+		from public.cuentas c
+		join public.cuentaacreditado ca on ca.cuentas_id = c.cuentas_id
+		join public.acreditado a  on a.acreditado_id = ca.acreditado_id
+		left join public.direcciones d on d.acreditado_id = a.acreditado_id
+		left join public.telefono t on t.acreditado_id = a.acreditado_id
+		left join public.geodomicilio gd on gd.direccion_id = d.direccion_id
+		left join public.correo co on co.acreditado_id = a.acreditado_id
+		left join public.propiedad p on p.acreditado_id = a.acreditado_id
+		left join public.finca f on f.finca_id = p.finca_id
+		left join data_entrante.georreferenciacion_feb gf on gf."CIS" = c.cuentascis
+		left join public.metadireccion m on m.direccion_id = d.direccion_id
+	    WHERE c.cuentasest = 'A' /*and d.direccionest='A' and d.direccion <>'' and d.direipmod='0.0.0.1'*/ and c.cuentasgeoref is true --and (c.cuentasentrega is null and c.cuentasgeoref is true) --AND ca.cuentaacreditadoest = 'A' AND a.acreditadosest = 'A' AND d.direccionest = 'A' AND gd.geodomicilioest = 'A') AND (p_direccion_ids IS NULL OR d.direccion_id = ANY(v_direccion_ids))
+		group by c.cuentasnum, c.cuentascis,c.cuentasentrega, a.acreditadonum,gd.geodomiciliolati,gd.geodomiciliolongi, a.acreditadoidenti,a.acreditado_id,d.direccion_id, a.acreditadonom, 
+		c.tipoestrategia_id, c.cuentasdiasmoragave, c.tipoproducto_id, c.cuentassalpro,f.tipopredio_id, gf."DIRECCION",gf."CELULAR",gf."TELEFONOS",gf."CORREO ELECTRONICO",
+		gf."NOMBRE EMPRESA DONDE LABORA",gd.geodomipais,gd.geodomidis,gd.geodomipro,gd.geodomicor
+		having MAX(case when d.tipodireccion_id in (1,2) and d.direccionest = 'A' and d.direccion <> '' and upper(trim(d.direccion)) <> upper(trim(gf."DIRECCION")) then 1 else 0 end) = 1;
